@@ -3,7 +3,7 @@ export LinearQuadraticQuasiMetricSpace, DoubleIntegrator
 export steer, steer_pairwise
 
 ### QuasiMetric Typedef/Evaluation
-immutable LinearQuadratic2BVP{T<:AbstractFloat,
+struct LinearQuadratic2BVP{T<:AbstractFloat,
                               FGinv<:Function,
                               FexpAt<:Function,
                               Fcdrift<:Function,
@@ -25,7 +25,7 @@ immutable LinearQuadratic2BVP{T<:AbstractFloat,
     u::Fu
     x::Fx
 end
-type LinearQuadratic{T<:AbstractFloat,L<:LinearQuadratic2BVP} <: QuasiMetric
+mutable struct LinearQuadratic{T<:AbstractFloat,L<:LinearQuadratic2BVP} <: QuasiMetric
     bvp::L
     cmax::T
 end
@@ -93,7 +93,7 @@ import SymPy
 ## Symbolic stuff
 function expAt(A::Matrix, t::SymPy.Sym)
     n = size(A,1)
-    maximum(abs(A^n)) > 0 && error("TODO: implement more cases than nilpotent A! (e.g. diagonalizable)")
+    maximum(abs.(A^n)) > 0 && error("TODO: implement more cases than nilpotent A! (e.g. diagonalizable)")
     sum([A^i*(t^i/factorial(i)) for i in 0:n-1])
 end
 function Sym2Function(s::SymPy.Sym, args::Union{Symbol, Expr} = :t, replace_rules = ())
@@ -198,20 +198,20 @@ function steer_pairwise{T,S<:AbstractVector}(L::LinearQuadratic2BVP{T}, V::Vecto
     N = length(W)
     Vmat = statevec2mat(V)
     Wmat = statevec2mat(W)
-    Vbarmat = L.expAt(r)*Vmat .+ L.cdrift(r)
+    Vbarmat = broadcast(+, L.expAt(r)*Vmat, L.cdrift(r))
     Ginv = L.Ginv(r)
     BRB = L.B*inv(L.R)*L.B'
 
     cd = pairwise(SqMahalanobis(Ginv*BRB*Ginv), Vbarmat, Wmat)
-    LHT = Ginv*(L.A*Wmat .+ L.c)
+    LHT = Ginv*(broadcast(+, L.A*Wmat, L.c))
 
     T1 = Distances.dot_percol(Wmat, LHT)
     BLAS.gemm!('T', 'N', T(-2), Vbarmat, LHT, T(1), cd)
-    broadcast!(.+, cd, cd, 2*T1')
-    broadcast!(.-, cd, 1, cd)
+    broadcast!(+, cd, cd, 2*T1')
+    broadcast!(-, cd, 1, cd)
 
     cands = cd .> 0
-    if is(V, W)
+    if V === W
         for i in 1:N
             cands[i,i] = false
         end

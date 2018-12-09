@@ -8,6 +8,7 @@ function fmtstar!{T}(P::MPProblem{T}, N::Int; rm::T = T(1),
                                               ensure_goal_ct = 1,
                                               init_idx = 1,
                                               checkpts = true)  # TODO: bleh, prefer false
+    @show "running"
     tic()
     P.CC.count = 0
 
@@ -48,9 +49,9 @@ function fmtstar!{T}(P::MPProblem{T}, N::Int; rm::T = T(1),
     if P.V[init_idx] == P.init
         W[init_idx] = false
         H[init_idx] = true
-        HHeap = Collections.PriorityQueue([init_idx], T[0])
+        HHeap = DataStructures.PriorityQueue([init_idx], T[0])
     else    # special casing the first expansion round of FMT if P.init is not in the sample set
-        # HHeap = Collections.PriorityQueue(Int[], T[])
+        # HHeap = DataStructures.PriorityQueue(Int[], T[])
         # neighborhood = (connections == :R ? inballF(P.V, P.init, r) : knnF(P.V, P.init, r))
         # for ii in 1:length(nonzeroinds(neighborhood))
         #     x, c = nonzeroinds(neighborhood)[ii], nonzeros(neighborhood)[ii]
@@ -63,7 +64,7 @@ function fmtstar!{T}(P::MPProblem{T}, N::Int; rm::T = T(1),
         #     end
         # end
     end
-    z = Collections.dequeue!(HHeap)    # i.e. z = init_idx
+    z = DataStructures.dequeue!(HHeap)    # i.e. z = init_idx
 
     while !is_goal_pt(P.V[z], P.goal, P.SS)
         H_new = Int[]
@@ -83,7 +84,7 @@ function fmtstar!{T}(P::MPProblem{T}, N::Int; rm::T = T(1),
         H[H_new] = true
         H[z] = false
         if !isempty(HHeap)
-            z = Collections.dequeue!(HHeap)
+            z = DataStructures.dequeue!(HHeap)
         else
             break
         end

@@ -26,7 +26,7 @@ In rare circumstances, the user might need to specify:
 ==================================================================#
 
 ### State Space Definitions
-immutable BoundedStateSpace{S<:State,M<:PreMetric,W<:State2Workspace} <: StateSpace{S}
+struct BoundedStateSpace{S<:State,M<:PreMetric,W<:State2Workspace} <: StateSpace{S}
     lo::S
     hi::S
     dist::M
@@ -42,13 +42,13 @@ volume(SS::BoundedStateSpace) = prod(SS.hi-SS.lo)    # TODO: only makes sense fo
 dim{S}(SS::BoundedStateSpace{S}) = length(S)         # TODO: this should really be a function of the metric dist
 
 ### State2Workspace (configuration space -> collision checking workspace)
-immutable Identity <: State2Workspace end
-immutable VectorView{N} <: State2Workspace
+struct Identity <: State2Workspace end
+struct VectorView{N} <: State2Workspace
     inds::NTuple{N,Int}
 end
 VectorView(inds::Int...) = VectorView(inds)
 VectorView(inds) = VectorView(Tuple(inds))
-immutable OutputMatrix{M,N,T<:AbstractFloat,L} <: State2Workspace
+struct OutputMatrix{M,N,T<:AbstractFloat,L} <: State2Workspace
     C::SMatrix{M,N,T,L}
 end
 OutputMatrix(C::Matrix) = OutputMatrix(SMatrix{size(C,1),size(C,2)}(C))

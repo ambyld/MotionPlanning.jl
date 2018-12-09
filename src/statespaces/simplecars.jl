@@ -2,23 +2,23 @@ export ReedsSheppMetricSpace, DubinsQuasiMetricSpace
 export ReedsSheppExact, DubinsExact, SimpleCarMetric
 
 ### (Quasi)Metric Typedefs/Evaluation
-immutable ReedsSheppExact{T<:AbstractFloat} <: Metric
+struct ReedsSheppExact{T<:AbstractFloat} <: Metric
     r::T
     s::T
     p::Vector{StepControl{T,2}}    # scratch space to avoid extra memory allocation
 
-    ReedsSheppExact(r::T, s::T) = new(r, s, Array(StepControl{T,2}, 5))
+    ReedsSheppExact{T}(r::T, s::T) where T = new(r, s, Array(StepControl{T,2}, 5))
 end
 ReedsSheppExact{T<:AbstractFloat}(r::T = T(1), s::T = T(1)) = ReedsSheppExact{T}(r, s)
-immutable DubinsExact{T<:AbstractFloat} <: QuasiMetric
+struct DubinsExact{T<:AbstractFloat} <: QuasiMetric
     r::T
     s::T
     p::Vector{StepControl{T,2}}    # scratch space to avoid extra memory allocation
 
-    DubinsExact(r::T, s::T) = new(r, s, Array(StepControl{T,2}, 3))
+    DubinsExact{T}(r::T, s::T) where T = new(r, s, Array(StepControl{T,2}, 3))
 end
 DubinsExact{T<:AbstractFloat}(r::T = T(1), s::T = T(1)) = DubinsExact{T}(r, s)
-typealias SimpleCarMetric{T} Union{ReedsSheppExact{T}, DubinsExact{T}}
+const SimpleCarMetric{T} = Union{ReedsSheppExact{T}, DubinsExact{T}}
 
 evaluate(RS::ReedsSheppExact, v::SE2State, w::SE2State) = reedsshepp(v, w, RS.r, RS.s, RS.p)[1]
 evaluate(D::DubinsExact, v::SE2State, w::SE2State) = dubins(v, w, D.r, D.s, D.p)[1]

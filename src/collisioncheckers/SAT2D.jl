@@ -4,18 +4,18 @@ export colliding, colliding_ends_free, closest, closeR
 
 # ---------- Shape Definitions ----------
 
-abstract Shape2D{T<:AbstractFloat}
-typealias AnyVec2{T} Union{AbstractVector{T}, Tuple{T,T}}
+abstract type Shape2D{T<:AbstractFloat} end
+const AnyVec2{T} = Union{AbstractVector{T}, Tuple{T,T}}
 eltype{T<:AbstractFloat}(::Type{Shape2D{T}}) = T
 eltype{T<:Shape2D}(::Type{T}) = eltype(super(T))
 
-immutable Circle{T} <: Shape2D{T}
+struct Circle{T} <: Shape2D{T}
     c::SVector{2,T}
     r::T
     xrange::SVector{2,T}
     yrange::SVector{2,T}
 
-    function Circle(c::SVector{2,T}, r::T, xrange::SVector{2,T}, yrange::SVector{2,T})
+    function Circle{T}(c::SVector{2,T}, r::T, xrange::SVector{2,T}, yrange::SVector{2,T}) where T
         r <= 0 && error("Radius must be positive")
         new(c, r, xrange, yrange)
     end
@@ -26,7 +26,7 @@ Circle(c::AnyVec2, r) = Circle{eltype(c)}(SVector(c[1], c[2]), r,
 projectNextrema(C::Circle, n::SVector{2}) = (d = dot(C.c,n); SVector(d-C.r, d+C.r))
 changeprecision{T<:AbstractFloat}(::Type{T}, C::Circle) = Circle(changeprecision(T, C.c), T(C.r))
 
-immutable Polygon{T} <: Shape2D{T}
+struct  Polygon{T} <: Shape2D{T}
     points::Vector{SVector{2,T}}
     edges::Vector{SVector{2,T}}
     normals::Vector{SVector{2,T}}
@@ -34,7 +34,7 @@ immutable Polygon{T} <: Shape2D{T}
     yrange::SVector{2,T}
     nextrema::Vector{SVector{2,T}}
 
-    function Polygon(points::Vector{SVector{2,T}})
+    function Polygon{T}(points::Vector{SVector{2,T}}) where T
         N = length(points)
         N < 3 && error("Polygons need at least 3 points! Try Line?")
         if sum([(points[wrap1(i+1,N)][1] - points[i][1])*(points[wrap1(i+1,N)][2] + points[i][2]) for i in 1:N]) > 0
@@ -57,7 +57,7 @@ Box2D(xr::AnyVec2, yr::AnyVec2) = Polygon([SVector(xr[1], yr[1]),
 projectNextrema(P::Polygon, n::SVector{2}) = projectNextrema(P.points, n)
 changeprecision{T<:AbstractFloat}(::Type{T}, P::Polygon) = Polygon(changeprecision(T, P.points))
 
-immutable Line{T} <: Shape2D{T}   # special case of Polygon; only 1 edge/normal
+struct Line{T} <: Shape2D{T}   # special case of Polygon; only 1 edge/normal
     v::SVector{2,T}
     w::SVector{2,T}
     edge::SVector{2,T}
@@ -66,7 +66,7 @@ immutable Line{T} <: Shape2D{T}   # special case of Polygon; only 1 edge/normal
     yrange::SVector{2,T}
     ndotv::T
 
-    function Line(v::SVector{2,T}, w::SVector{2,T})
+    function Line{T}(v::SVector{2,T}, w::SVector{2,T}) where T
         edge = w - v
         normal = perp(edge)     # notably not normalized, for speed; can't be used for Circle SAT
         xrange = minmaxV(v[1],w[1])
@@ -79,7 +79,7 @@ Line(v::AnyVec2, w::AnyVec2) = Line{eltype(v)}(SVector(v[1],v[2]), SVector(w[1],
 projectNextrema(L::Line, n::SVector{2}) = minmaxV(dot(L.v,n), dot(L.w,n))
 changeprecision{T<:AbstractFloat}(::Type{T}, L::Line) = Line(changeprecision(T, L.v), changeprecision(T, L.w))
 
-immutable Compound2D{T} <: Shape2D{T}
+struct  Compound2D{T} <: Shape2D{T}
     parts::Vector{Shape2D{T}}
     xrange::SVector{2,T}
     yrange::SVector{2,T}
@@ -97,8 +97,8 @@ end
 changeprecision{T<:AbstractFloat}(::Type{T}, C::Compound2D) =
     Compound2D(Shape2D{T}[changeprecision(T,P) for P in C.parts])
 
-typealias PolyOrLine{T} Union{Polygon{T}, Line{T}}
-typealias Basic2D{T} Union{Circle{T}, Polygon{T}}    # TODO: Figure out why I have Shape2D, PolyOrLine, and Basic2D
+const PolyOrLine{T} = Union{Polygon{T}, Line{T}}
+const Basic2D{T} = Union{Circle{T}, Polygon{T}}    # TODO: Figure out why I have Shape2D, PolyOrLine, and Basic2D
 
 # type AABB{T} <: Shape2D{T}  # a bit late to the party; could refactor other Shapes
 #     xrange::Vector2{T}

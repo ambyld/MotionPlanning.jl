@@ -2,14 +2,14 @@ import Base.copy
 export MPProblem, MPSolution
 export clearsamples!
 
-type MPSolution{T}
+mutable struct MPSolution{T}
     status::Symbol
     cost::T
     elapsed::Float64
     metadata::Dict
 end
 
-type MPProblem{T<:AbstractFloat}
+mutable struct MPProblem{T<:AbstractFloat}
     SS::StateSpace
     init::State
     goal::Goal
@@ -19,12 +19,12 @@ type MPProblem{T<:AbstractFloat}
     status::Symbol
     solution::MPSolution{T}
 
-    function MPProblem(SS::StateSpace,
+    function MPProblem{T}(SS::StateSpace,
                        init::State,
                        goal::Goal,
                        CC::CollisionChecker,
                        V::SampleSet,
-                       config_name::String="$(dim(SS))D $(typeof(SS))")
+                       config_name::String="$(dim(SS))D $(typeof(SS))") where T
         new(SS, init, goal, CC, V, config_name, "not yet solved")
     end
 end

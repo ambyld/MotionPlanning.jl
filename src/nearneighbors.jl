@@ -11,55 +11,52 @@ export inballF, knnF, inballF!, knnF!, mutualknnF!    # forwards
 export inballB, knnB, inballB!, knnB!, mutualknnB!    # backwards
 
 ### Typedefs
-abstract SampleSet
-abstract NearNeighborCache{T}; begin
-    ## NearNeighborCache implementations
-    # TODO: consider EmptyNNC for online algorithms or streaming-batch
-    immutable MutableNNC{T} <: NearNeighborCache{T}
-        D::Vector{SparseVector{T,Int}}
-        r::Vector{T}
-    end
-    MutableNNC{T}(N::Int, ::Type{T}) = MutableNNC{T}(Array(SparseVector{T,Int}, N), zeros(T, N))
-    immutable ImmutableNNC{T} <: NearNeighborCache{T}
-        D::SparseMatrixCSC{T,Int}
-        r::Vector{T}
-    end
-    ImmutableNNC(M::MutableNNC) = ImmutableNNC(hcat(M.D...), M.r)
-    MutableNNC{T}(I::ImmutableNNC{T}) = MutableNNC(size(I.D,1), T) # clear the cache
+abstract type SampleSet end
+abstract type NearNeighborCache{T} end
+## NearNeighborCache implementations
+# TODO: consider EmptyNNC for online algorithms or streaming-batch
+struct MutableNNC{T} <: NearNeighborCache{T}
+    D::Vector{SparseVector{T,Int}}
+    r::Vector{T}
 end
+MutableNNC{T}(N::Int, ::Type{T}) = MutableNNC{T}(Array{SparseVector{T,Int}}(N), zeros(T, N))
+struct ImmutableNNC{T} <: NearNeighborCache{T}
+    D::SparseMatrixCSC{T,Int}
+    r::Vector{T}
+end
+ImmutableNNC(M::MutableNNC) = ImmutableNNC(hcat(M.D...), M.r)
+MutableNNC{T}(I::ImmutableNNC{T}) = MutableNNC(size(I.D,1), T) # clear the cache
 
-abstract ControlCache{U<:ControlInfo}; begin
-    ## ControlCache implementations 
-    immutable EmptyControlCache{U} <: ControlCache{U} end
-    EmptyControlCache{U}(::Type{U}) = EmptyControlCache{U}()
-    EmptyControlCache() = EmptyControlCache(NullControl)
-    immutable MutableControlCache{U} <: ControlCache{U}
-        US::Vector{SparseVector{U,Int}}
-    end
-    MutableControlCache{U}(N::Int, ::Type{U}) = MutableControlCache{U}(Array(SparseVector{U,Int}, N))
-    immutable ImmutableControlCache{U} <: ControlCache{U}
-        US::SparseMatrixCSC{U,Int}
-    end
-    ImmutableControlCache(M::MutableControlCache) = ImmutableControlCache(hcat(M.U...))
-    MutableControlCache{U}(I::ImmutableControlCache{U}) = MutableControlCache(size(I.US,1), U) # clear the cache
+abstract type ControlCache{U<:ControlInfo} end
+## ControlCache implementations 
+struct EmptyControlCache{U} <: ControlCache{U} end
+EmptyControlCache{U}(::Type{U}) = EmptyControlCache{U}()
+EmptyControlCache() = EmptyControlCache(NullControl)
+struct MutableControlCache{U} <: ControlCache{U}
+    US::Vector{SparseVector{U,Int}}
 end
+MutableControlCache{U}(N::Int, ::Type{U}) = MutableControlCache{U}(Array(SparseVector{U,Int}, N))
+struct ImmutableControlCache{U} <: ControlCache{U}
+    US::SparseMatrixCSC{U,Int}
+end
+ImmutableControlCache(M::MutableControlCache) = ImmutableControlCache(hcat(M.U...))
+MutableControlCache{U}(I::ImmutableControlCache{U}) = MutableControlCache(size(I.US,1), U) # clear the cache
 
-abstract DistanceDataStructure{T}; begin
-    ## DistanceDataStructure implementations
-    immutable EmptyDistanceDS{T} <: DistanceDataStructure{T} end
-    EmptyDistanceDS{T}(::Type{T}) = EmptyDistanceDS{T}()
-    immutable BruteDistanceDS{A<:AbstractMatrix,T} <: DistanceDataStructure{T}
-        Dmat::A
-    end
-    BruteDistanceDS{T}(Dmat::AbstractMatrix{T}) = BruteDistanceDS{typeof(Dmat),T}(Dmat)
-    immutable TreeDistanceDS{NNT<:NearestNeighbors.NNTree,T} <: DistanceDataStructure{T}
-        tree::NNT
-    end
-    TreeDistanceDS{V}(tree::NearestNeighbors.NNTree{V}) = TreeDistanceDS{typeof(tree),eltype(V)}(tree)
+abstract type DistanceDataStructure{T} end
+## DistanceDataStructure implementations
+struct EmptyDistanceDS{T} <: DistanceDataStructure{T} end
+EmptyDistanceDS{T}(::Type{T}) = EmptyDistanceDS{T}()
+struct BruteDistanceDS{A<:AbstractMatrix,T} <: DistanceDataStructure{T}
+    Dmat::A
 end
+BruteDistanceDS{T}(Dmat::AbstractMatrix{T}) = BruteDistanceDS{typeof(Dmat),T}(Dmat)
+struct TreeDistanceDS{NNT<:NearestNeighbors.NNTree,T} <: DistanceDataStructure{T}
+    tree::NNT
+end
+TreeDistanceDS{V}(tree::NearestNeighbors.NNTree{V}) = TreeDistanceDS{typeof(tree),eltype(V)}(tree)
 
 ### Construction
-type MetricNN{M<:SymmetricDistance,S<:State,N<:NearNeighborCache,D<:DistanceDataStructure,U<:ControlCache} <: SampleSet
+mutable struct MetricNN{M<:SymmetricDistance,S<:State,N<:NearNeighborCache,D<:DistanceDataStructure,U<:ControlCache} <: SampleSet
     V::Vector{S}
     dist::M
     init::S
@@ -73,7 +70,7 @@ function MetricNN{S<:State}(V::Vector{S}, dist::SymmetricDistance, init::S)
     MetricNN(V, dist, init, MutableNNC(N,T), helper_data_structures(V, dist)...)
 end
 
-type QuasiMetricNN{M<:AsymmetricDistance,S<:State,N<:NearNeighborCache,
+mutable struct QuasiMetricNN{M<:AsymmetricDistance,S<:State,N<:NearNeighborCache,
                    D<:DistanceDataStructure,U<:ControlCache} <: SampleSet
     V::Vector{S}
     dist::M
@@ -127,7 +124,7 @@ for direction in ("", "F", "B")
     DSD = Symbol(:DS, direction)
     @eval $inballD!{M,S,N<:ImmutableNNC}(NN::$NNsym{M,S,N}, v::Int, r) = viewcol(NN.$cacheD.D, v)
     @eval function $inballD!{M,S,N<:MutableNNC}(NN::$NNsym{M,S,N}, v::Int, r)
-        if !isdefined(NN.$cacheD.D, v)
+        if !isassigned(NN.$cacheD.D, v)
             NN.$cacheD.D[v] = inball(NN.V, NN.dist, NN.$DSD, v, r, $(direction != "B"))
             NN.$cacheD.r[v] = r
         end

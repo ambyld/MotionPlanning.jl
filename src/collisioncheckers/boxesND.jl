@@ -2,7 +2,7 @@ export PointRobotNDBoxes
 
 # ---------- Point Robot (amongst N-d boxes) ----------
 
-immutable BoxBounds{N,T<:AbstractFloat}
+struct BoxBounds{N,T<:AbstractFloat}
     lo::SVector{N,T}
     hi::SVector{N,T}
 end
@@ -12,7 +12,7 @@ inflate{N,T}(BB::BoxBounds{N,T}, ε) = ε > 0 ? BoxBounds(BB.lo - T(ε), BB.hi +
 changeprecision{T<:AbstractFloat}(::Type{T}, BB::BoxBounds) =
     BoxBounds(changeprecision(T, BB.lo), changeprecision(T, BB.hi))
 
-type PointRobotNDBoxes{N,T} <: SweptCollisionChecker
+mutable struct PointRobotNDBoxes{N,T} <: SweptCollisionChecker
     boxes::Vector{BoxBounds{N,T}}
     count::Int
 end

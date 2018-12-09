@@ -1,11 +1,11 @@
 export Goal, RectangleGoal, BallGoal, ConvexHullWorkspaceGoal, ConvexHullStateSpaceGoal
 export PointGoal, StateGoal, is_goal_pt, sample_goal
 
-abstract Goal
-abstract WorkspaceGoal <: Goal
-abstract StateSpaceGoal <: Goal
+abstract type Goal end
+abstract type WorkspaceGoal <: Goal end
+abstract type StateSpaceGoal <: Goal end
 
-immutable RectangleGoal{N,T<:AbstractFloat} <: WorkspaceGoal
+struct RectangleGoal{N,T<:AbstractFloat} <: WorkspaceGoal
     lo::SVector{N,T}
     hi::SVector{N,T}
 end
@@ -14,14 +14,14 @@ changeprecision{T<:AbstractFloat}(::Type{T}, G::RectangleGoal) = RectangleGoal(c
                                                                                changeprecision(T, G.hi))
 
 
-immutable BallGoal{N,T<:AbstractFloat} <: WorkspaceGoal
+struct BallGoal{N,T<:AbstractFloat} <: WorkspaceGoal
     center::SVector{N,T}
     radius::T
 end
 BallGoal(center::AbstractVector, radius) = BallGoal(SVector(center), radius)
 changeprecision{T<:AbstractFloat}(::Type{T}, G::BallGoal) = BallGoal(changeprecision(T, G.center), T(radius))
 
-immutable ConvexHullWorkspaceGoal{N,T<:AbstractFloat} <: WorkspaceGoal
+struct ConvexHullWorkspaceGoal{N,T<:AbstractFloat} <: WorkspaceGoal
     pts::Vector{SVector{N,T}}
     A::Matrix{Float64}    # for use with the SCS LP solver
     b::Vector{Float64}    # for use with the SCS LP solver
@@ -29,9 +29,9 @@ immutable ConvexHullWorkspaceGoal{N,T<:AbstractFloat} <: WorkspaceGoal
     m::Int
     n::Int
 
-    function ConvexHullWorkspaceGoal(pts::Vector{SVector{N,T}})
+    function ConvexHullWorkspaceGoal{N,T}(pts::Vector{SVector{N,T}}) where {N,T}
         m, n = N, length(pts)
-        A = n > 1 ? convert(Matrix{Float64}, [statevec2mat(pts); ones(1,n); -eye(n)]) : Array(Float64,0,0)
+        A = n > 1 ? convert(Matrix{Float64}, [statevec2mat(pts); ones(1,n); -eye(n)]) : Array{Float64}(0,0)
         b = zeros(m + n + 1); b[m+1] = 1
         c = zeros(n)
         new(pts, A, b, c, m, n)
@@ -43,7 +43,7 @@ PointGoal(pt::AbstractVector) = ConvexHullWorkspaceGoal([pt])
 changeprecision{T<:AbstractFloat}(::Type{T}, G::ConvexHullWorkspaceGoal) =
     ConvexHullWorkspaceGoal(changeprecision(T, G.pts))
 
-immutable ConvexHullStateSpaceGoal{S<:State} <: StateSpaceGoal
+struct ConvexHullStateSpaceGoal{S<:State} <: StateSpaceGoal
     sts::Vector{S}
     A::Matrix{Float64}    # for use with the SCS LP solver
     b::Vector{Float64}    # for use with the SCS LP solver
@@ -51,9 +51,9 @@ immutable ConvexHullStateSpaceGoal{S<:State} <: StateSpaceGoal
     m::Int
     n::Int
 
-    function ConvexHullStateSpaceGoal(sts::Vector{S})
+    function ConvexHullStateSpaceGoal{S}(sts::Vector{S}) where S
         m, n = length(sts[1]), length(sts)
-        A = n > 1 ? convert(Matrix{Float64}, [statevec2mat(sts); ones(1,n); -eye(n)]) : Array(Float64,0,0)
+        A = n > 1 ? convert(Matrix{Float64}, [statevec2mat(sts); ones(1,n); -eye(n)]) : Array{Float64}(0,0)
         b = zeros(m + n + 1); b[m+1] = 1
         c = zeros(n)
         new(sts, A, b, c, m, n)

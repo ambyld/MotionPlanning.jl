@@ -5,11 +5,12 @@ module MotionPlanning
 using Reexport
 @reexport using StaticArrays
 @reexport using Distances
-import PyPlot; const plt = PyPlot
+# import PyPlot; const plt = PyPlot
 using Distributions; import Base.eltype; eltype{T}(::Dirichlet{T}) = T    # TODO: submit Distributions PR
 using SCS
 using Iterators
 using NearestNeighbors
+using DataStructures
 
 ### Includes
 include("primitivetypes.jl")
@@ -22,7 +23,7 @@ include("problems.jl")
 include("sampling.jl")
 include("planners.jl")
 include("postprocessors.jl")
-include("plotting.jl")
+# include("plotting.jl")
 
 # TODO: test suite!
 # TODO: T<:AbstractFloat - either ensure type stability (at least for states), or just go with Float64 everything

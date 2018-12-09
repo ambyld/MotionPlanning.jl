@@ -7,15 +7,15 @@ export AbstractState, State, Path, AbstractBitsState, BitsState
 export statevec2mat, statemat2vec, changeprecision, dense
 
 "The `supertype` for all non-`AbstractVector` states."
-abstract AbstractState
+abstract type AbstractState end
 "Type union of all states, encompassing `AbstractVector`s and `AbstractState`s."
-typealias State Union{AbstractVector, AbstractState}
+const State = Union{AbstractVector, AbstractState}
 "Shorthand for a list (`Vector`) of states."
-typealias Path{S<:State} Vector{S}
+const Path{S<:State} = Vector{S}
 "The `supertype` for all non-`SVector` states that satisfy `isbits(S) == true`."
-abstract AbstractBitsState <: AbstractState
+abstract type AbstractBitsState <: AbstractState end
 "Type union encompassing all states that may satisfy `isbits(S) == true`."
-typealias BitsState Union{SVector, FieldVector, AbstractBitsState}
+const BitsState = Union{SVector, FieldVector, AbstractBitsState}
 
 "Reinterprets a list of `BitsState`s as a `Matrix` without copying/re-allocating memory."    # TODO: methods for nonbits
 function statevec2mat{S<:BitsState}(V::Vector{S})
@@ -44,7 +44,7 @@ changeprecision{T<:AbstractFloat,S}(::Type{T}, ::Type{S}) = S
 export SE2State
 
 "State consisting of a position (x,y) ∈ R^2 and an angle θ ∈ R."
-immutable SE2State{T} <: FieldVector{T}
+struct SE2State{T} <: FieldVector{3,T}
     x::T
     y::T
     θ::T
@@ -56,16 +56,16 @@ changeprecision{T<:AbstractFloat,S<:Real}(::Type{T}, ::Type{SE2State{S}}) = SE2S
 export StateSpace, State2Workspace
 
 "The `supertype` for all state spaces; the type parameter is the state type."
-abstract StateSpace{S<:State}
+abstract type StateSpace{S<:State} end
 "Encodes a transformation from the state space (dynamics) to the workspace (obstacles)."
-abstract State2Workspace
+abstract type State2Workspace end
 
 
 ### Metrics and QuasiMetrics
 export QuasiMetric, PreMetric, Metric, ChoppedMetric, ChoppedQuasiMetric, ChoppedPreMetric
 
 "A quasimetric satisfies positivity, positive definiteness, and the triangle inequality (no symmetry)."
-abstract QuasiMetric <: PreMetric
+abstract type QuasiMetric <: PreMetric end
 
 ## Fallbacks (should usually be extended)
 colwise{S<:State}(d::PreMetric, v::S, W::Vector{S}) = eltype(S)[evaluate(d, v, w) for w in W]
@@ -76,7 +76,7 @@ colwise{S<:State}(d::PreMetric, W::Vector{S}, v::S) = eltype(S)[evaluate(d, w, v
 Evaluates as `m(v, w) <= chopval ? m(v, w) : Inf` for points `v` and `w`.\n
 `lowerbound` should be easier to evaluate than `m` and must satisfy `lowerbound(v, w) ≤ m(v, w)` for all `v`, `w`.
 """
-type ChoppedMetric{M<:Metric,B<:Metric,T<:AbstractFloat} <: PreMetric
+struct ChoppedMetric{M<:Metric,B<:Metric,T<:AbstractFloat} <: PreMetric
     m::M
     lowerbound::B
     chopval::T
@@ -85,13 +85,13 @@ end
 Evaluates as `m(v, w) <= chopval ? m(v, w) : Inf` for points `v` and `w`.\n
 `lowerbound` should be easier to evaluate than `m` and must satisfy `lowerbound(v, w) ≤ m(v, w)` for all `v`, `w`.
 """
-type ChoppedQuasiMetric{M<:QuasiMetric,B<:Metric,T<:AbstractFloat} <: PreMetric
+struct ChoppedQuasiMetric{M<:QuasiMetric,B<:Metric,T<:AbstractFloat} <: PreMetric
     m::M
     lowerbound::B
     chopval::T
 end
 "Type union encompassing `ChoppedMetric` and `ChoppedQuasiMetric`."
-typealias ChoppedPreMetric{M,B,T} Union{ChoppedMetric{M,B,T}, ChoppedQuasiMetric{M,B,T}}
+const ChoppedPreMetric{M,B,T} = Union{ChoppedMetric{M,B,T}, ChoppedQuasiMetric{M,B,T}}
 function evaluate(clbm::ChoppedPreMetric, v::AbstractVector, w::AbstractVector)    # TODO: maybe remove `AbstractState`?
     lb = evaluate(clbm.lowerbound, v, w)
     lb > clbm.chopval && return oftype(clbm.chopval, Inf)   # Inf is a sentinel value more numerically robust than using
@@ -103,8 +103,8 @@ for M in (:ChoppedMetric, :ChoppedQuasiMetric)
                                                                    changeprecision(T, x.lowerbound),
                                                                    T(x.chopval))
 end
-typealias SymmetricDistance Union{Metric, ChoppedMetric}
-typealias AsymmetricDistance Union{QuasiMetric, ChoppedQuasiMetric}
+const SymmetricDistance = Union{Metric, ChoppedMetric}
+const AsymmetricDistance = Union{QuasiMetric, ChoppedQuasiMetric}
 
 
 ### Steering
@@ -112,21 +112,21 @@ export ControlInfo, NullControl, StepControl, DurationAndTargetControl
 export ControlSequence, ZeroOrderHoldControl, TimestampedTrajectoryControl
 export duration, splitcontrol
 
-abstract ControlInfo
-immutable NullControl <: ControlInfo end
-immutable StepControl{T<:AbstractFloat,N} <: ControlInfo
+abstract type ControlInfo end
+struct NullControl <: ControlInfo end
+struct StepControl{T<:AbstractFloat,N} <: ControlInfo
     t::T
     u::SVector{N,T}
 end
 StepControl{T}(t::T, u::AbstractVector{T}) = StepControl(t, SVector(u))
-immutable DurationAndTargetControl{T<:AbstractFloat,N} <: ControlInfo
+struct DurationAndTargetControl{T<:AbstractFloat,N} <: ControlInfo
     t::T
     x::SVector{N,T}
 end
 DurationAndTargetControl{T}(t::T, x::AbstractVector{T}) = DurationAndTargetControl(t, SVector(x))
-typealias ControlSequence{C<:ControlInfo} Vector{C}
-typealias ZeroOrderHoldControl{C<:StepControl} Vector{C}
-typealias TimestampedTrajectoryControl{C<:DurationAndTargetControl} Vector{C}
+const ControlSequence{C<:ControlInfo} = Vector{C}
+const ZeroOrderHoldControl{C<:StepControl} = Vector{C}
+const TimestampedTrajectoryControl{C<:DurationAndTargetControl} = Vector{C}
 
 duration(x::ControlInfo) = x.t
 duration(x::ControlSequence) = sum(duration(s) for s in x)

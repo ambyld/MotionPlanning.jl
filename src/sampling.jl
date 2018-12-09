@@ -11,7 +11,7 @@ end
 function sample_free!(P::MPProblem, N::Integer, ensure_goal::Bool = true; goal_bias = 0.0, ensure_goal_ct = 5)
     N <= 0 && return volume(P.SS)  # TODO: do something principled about replanning with fewer samples (see note in fmtstar!)
     V = P.V.V
-    W = Array(eltype(V), N)
+    W = Array{eltype(V)}(N)
     if length(V) > 0 && V[1] == P.init
         sample_count = 0
     else
